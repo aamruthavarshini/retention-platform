@@ -8,39 +8,37 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 router.post('/', async (req, res) => {
   try {
     const { message, history } = req.body;
-    const company_id = req.user.company_id;
 
-    // Pull live data snapshot for context
-    const totalCustomers = db.prepare("SELECT COUNT(*) as count FROM customers WHERE company_id = ?").get(company_id).count;
-    const activeCustomers = db.prepare("SELECT COUNT(*) as count FROM customers WHERE company_id = ? AND status = 'Active'").get(company_id).count;
-    const cancelledCustomers = db.prepare("SELECT COUNT(*) as count FROM customers WHERE company_id = ? AND status = 'Cancelled'").get(company_id).count;
-    const highRisk = db.prepare("SELECT COUNT(*) as count FROM customers WHERE company_id = ? AND risk_score >= 0.7 AND status = 'Active'").get(company_id).count;
-    const mrr = db.prepare("SELECT SUM(subscription_value) as total FROM customers WHERE company_id = ? AND status = 'Active'").get(company_id).total || 0;
-    const atRiskMrr = db.prepare("SELECT SUM(subscription_value) as total FROM customers WHERE company_id = ? AND risk_score >= 0.7 AND status = 'Active'").get(company_id).total || 0;
+    const totalCustomers = db.prepare("SELECT COUNT(*) as count FROM customers").get().count;
+    const activeCustomers = db.prepare("SELECT COUNT(*) as count FROM customers WHERE status = 'Active'").get().count;
+    const cancelledCustomers = db.prepare("SELECT COUNT(*) as count FROM customers WHERE status = 'Cancelled'").get().count;
+    const highRisk = db.prepare("SELECT COUNT(*) as count FROM customers WHERE risk_score >= 0.7 AND status = 'Active'").get().count;
+    const mrr = db.prepare("SELECT SUM(subscription_value) as total FROM customers WHERE status = 'Active'").get().total || 0;
+    const atRiskMrr = db.prepare("SELECT SUM(subscription_value) as total FROM customers WHERE risk_score >= 0.7 AND status = 'Active'").get().total || 0;
 
     const topAtRisk = db.prepare(`
       SELECT name, email, plan_type, risk_score, subscription_value, industry, usage_hours, support_tickets, last_login
-      FROM customers WHERE company_id = ? AND status = 'Active'
+      FROM customers WHERE status = 'Active'
       ORDER BY risk_score DESC LIMIT 10
-    `).all(company_id);
+    `).all();
 
     const planBreakdown = db.prepare(`
       SELECT plan_type, COUNT(*) as count, SUM(subscription_value) as mrr
-      FROM customers WHERE company_id = ? AND status = 'Active'
+      FROM customers WHERE status = 'Active'
       GROUP BY plan_type
-    `).all(company_id);
+    `).all();
 
     const industryBreakdown = db.prepare(`
       SELECT industry, COUNT(*) as count, AVG(risk_score) as avg_risk
-      FROM customers WHERE company_id = ? AND status = 'Active'
+      FROM customers WHERE status = 'Active'
       GROUP BY industry ORDER BY avg_risk DESC
-    `).all(company_id);
+    `).all();
 
     const recentCancellations = db.prepare(`
       SELECT name, email, plan_type, subscription_value, sentiment_score, support_tickets, usage_hours
-      FROM customers WHERE company_id = ? AND status = 'Cancelled'
+      FROM customers WHERE status = 'Cancelled'
       ORDER BY last_login DESC LIMIT 10
-    `).all(company_id);
+    `).all();
 
     const avgMetrics = db.prepare(`
       SELECT 
@@ -48,8 +46,8 @@ router.post('/', async (req, res) => {
         AVG(support_tickets) as avg_tickets,
         AVG(sentiment_score) as avg_sentiment,
         AVG(risk_score) as avg_risk
-      FROM customers WHERE company_id = ? AND status = 'Active'
-    `).get(company_id);
+      FROM customers WHERE status = 'Active'
+    `).get();
 
     const systemPrompt = `
 You are an expert customer success analyst with access to real-time customer data. 
@@ -68,8 +66,8 @@ CURRENT DATA SNAPSHOT:
 AVERAGE METRICS (Active Customers):
 - Avg Usage Hours: ${avgMetrics?.avg_usage?.toFixed(1) || 0}h
 - Avg Support Tickets: ${avgMetrics?.avg_tickets?.toFixed(1) || 0}
-- Avg Sentiment Score: ${(avgMetrics?.avg_sentiment * 100)?.toFixed(0) || 0}%
-- Avg Risk Score: ${(avgMetrics?.avg_risk * 100)?.toFixed(0) || 0}%
+- Avg Sentiment Score: ${((avgMetrics?.avg_sentiment || 0) * 100).toFixed(0)}%
+- Avg Risk Score: ${((avgMetrics?.avg_risk || 0) * 100).toFixed(0)}%
 
 TOP 10 AT-RISK CUSTOMERS:
 ${topAtRisk.map(c => `- ${c.name} (${c.plan_type}, $${c.subscription_value}/mo) — Risk: ${(c.risk_score * 100).toFixed(0)}%, Usage: ${c.usage_hours}h, Tickets: ${c.support_tickets}, Last login: ${c.last_login}`).join('\n')}

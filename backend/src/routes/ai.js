@@ -110,14 +110,14 @@ router.post('/send-email', async (req, res) => {
     console.log('Attempting to send email to:', to);
 
     const { data, error } = await resend.emails.send({
-      from: 'RetainIQ <onboarding@resend.dev>',
-      to: [to],
+      from: 'CustomerPulse <onboarding@resend.dev>',
+      to: ['amruthavarshini601@gmail.com'],
       subject: 'A personal note from the RetainIQ team',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <p style="color: #374151; line-height: 1.6; white-space: pre-wrap;">${emailBody.replace(/\n/g, '<br/>')}</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">Sent via RetainIQ Customer Success Platform</p>
+          <p style="color: #9ca3af; font-size: 12px;">Sent via CustomerPulse Customer Success Platform</p>
         </div>
       `,
     });

@@ -90,16 +90,16 @@ router.post('/validate', upload.single('file'), (req, res) => {
           errors.push({ row: rowNum, message: `Row ${rowNum}: Missing or invalid email address` });
         }
         if (mapped.usage_hours && parseFloat(mapped.usage_hours) < 0) {
-          warnings.push({ row: rowNum, message: `Row ${rowNum}: Negative usage hours (${mapped.usage_hours})` });
+          warnings.push({ row: rowNum, message: `Row ${rowNum}: Negative usage hours` });
         }
         if (mapped.support_tickets && parseInt(mapped.support_tickets) < 0) {
           warnings.push({ row: rowNum, message: `Row ${rowNum}: Negative support ticket count` });
         }
         if (mapped.last_login && isNaN(Date.parse(mapped.last_login))) {
-          warnings.push({ row: rowNum, message: `Row ${rowNum}: Last login date can't be parsed ("${mapped.last_login}")` });
+          warnings.push({ row: rowNum, message: `Row ${rowNum}: Last login date cannot be parsed` });
         }
         if (mapped.join_date && isNaN(Date.parse(mapped.join_date))) {
-          warnings.push({ row: rowNum, message: `Row ${rowNum}: Join date can't be parsed ("${mapped.join_date}")` });
+          warnings.push({ row: rowNum, message: `Row ${rowNum}: Join date cannot be parsed` });
         }
         if (mapped.subscription_value && parseFloat(mapped.subscription_value) < 0) {
           warnings.push({ row: rowNum, message: `Row ${rowNum}: Negative subscription value` });
@@ -127,8 +127,6 @@ router.post('/validate', upload.single('file'), (req, res) => {
 router.post('/import', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const company_id = req.user.company_id;
-
   let mapping;
   try {
     mapping = JSON.parse(req.body.mapping);
@@ -143,18 +141,18 @@ router.post('/import', upload.single('file'), (req, res) => {
     .on('data', (data) => results.push(data))
     .on('end', () => {
       try {
-        db.prepare('DELETE FROM customers WHERE company_id = ?').run(company_id);
-        db.prepare('DELETE FROM activity_log WHERE company_id = ?').run(company_id);
-        db.prepare('DELETE FROM retention_actions WHERE company_id = ?').run(company_id);
-        db.prepare('DELETE FROM risk_scores WHERE company_id = ?').run(company_id);
+        db.exec('DELETE FROM customers');
+        db.exec('DELETE FROM activity_log');
+        db.exec('DELETE FROM retention_actions');
+        db.exec('DELETE FROM risk_scores');
 
         const insert = db.prepare(`
-          INSERT INTO customers (
-            company_id, customer_id, name, email, plan_type, join_date, last_login,
+          INSERT OR REPLACE INTO customers (
+            customer_id, name, email, plan_type, join_date, last_login,
             usage_hours, support_tickets, sentiment_score, subscription_value,
             risk_score, status, industry, company_size
           ) VALUES (
-            @company_id, @customer_id, @name, @email, @plan_type, @join_date, @last_login,
+            @customer_id, @name, @email, @plan_type, @join_date, @last_login,
             @usage_hours, @support_tickets, @sentiment_score, @subscription_value,
             @risk_score, @status, @industry, @company_size
           )
@@ -199,7 +197,6 @@ router.post('/import', upload.single('file'), (req, res) => {
             }
 
             insert.run({
-              company_id,
               customer_id: customerId,
               name: mapped.name || 'Unknown',
               email: mapped.email || '',

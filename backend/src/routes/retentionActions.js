@@ -4,15 +4,14 @@ const db = require('../db/database');
 
 router.get('/', (req, res) => {
   const { status } = req.query;
-  const company_id = req.user.company_id;
 
   let query = `
     SELECT ra.*, c.name as customer_name, c.email, c.plan_type, c.risk_score
     FROM retention_actions ra
-    JOIN customers c ON ra.customer_id = c.customer_id AND c.company_id = ra.company_id
-    WHERE ra.company_id = ?
+    JOIN customers c ON ra.customer_id = c.customer_id
+    WHERE 1=1
   `;
-  const params = [company_id];
+  const params = [];
 
   if (status) { query += ' AND ra.status = ?'; params.push(status); }
   query += ' ORDER BY c.risk_score DESC';
@@ -23,7 +22,6 @@ router.get('/', (req, res) => {
 
 router.patch('/:id', (req, res) => {
   const { status } = req.body;
-  const company_id = req.user.company_id;
   const validStatuses = ['Pending', 'Approved', 'Sent', 'Completed', 'Dismissed'];
 
   if (!validStatuses.includes(status)) {
@@ -31,8 +29,8 @@ router.patch('/:id', (req, res) => {
   }
 
   const result = db.prepare(
-    'UPDATE retention_actions SET status = ?, actioned_at = ? WHERE id = ? AND company_id = ?'
-  ).run(status, new Date().toISOString(), req.params.id, company_id);
+    'UPDATE retention_actions SET status = ?, actioned_at = ? WHERE id = ?'
+  ).run(status, new Date().toISOString(), req.params.id);
 
   if (result.changes === 0) return res.status(404).json({ error: 'Action not found' });
   res.json({ success: true, id: req.params.id, status });
