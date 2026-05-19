@@ -35,5 +35,11 @@ router.patch('/:id', (req, res) => {
   if (result.changes === 0) return res.status(404).json({ error: 'Action not found' });
   res.json({ success: true, id: req.params.id, status });
 });
-
+router.post('/', (req, res) => {
+  const { customer_id, action_type, suggestion, status } = req.body;
+  const result = db.prepare(
+    'INSERT INTO retention_actions (customer_id, action_type, suggestion, status, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(customer_id, action_type, suggestion, status || 'Pending', new Date().toISOString());
+  res.json({ success: true, id: result.lastInsertRowid });
+});
 module.exports = router;
