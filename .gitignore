@@ -1,0 +1,8 @@
+.env
+backend/.env
+backend/uploads/
+backend/data/
+backend/seed-actions.js
+*.db
+node_modules/
+.next/
