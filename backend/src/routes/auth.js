@@ -6,14 +6,32 @@ const db = require('../db/database');
 
 const SECRET = process.env.JWT_SECRET || 'retainiq-secret-key';
 
+// Create tables if they don't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    company_id INTEGER,
+    role TEXT DEFAULT 'admin',
+    created_at TEXT NOT NULL
+  );
+`);
+
 // Seed default company and admin if none exists
-const existingCompany = db.prepare('SELECT * FROM companies LIMIT 1').get();
-if (!existingCompany) {
+let defaultCompany = db.prepare('SELECT * FROM companies LIMIT 1').get();
+if (!defaultCompany) {
   db.prepare('INSERT INTO companies (name, created_at) VALUES (?, ?)')
     .run('Default Company', new Date().toISOString());
+  defaultCompany = db.prepare('SELECT * FROM companies LIMIT 1').get();
 }
-
-const defaultCompany = db.prepare('SELECT * FROM companies LIMIT 1').get();
 
 const existing = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@retainiq.com');
 if (!existing) {
