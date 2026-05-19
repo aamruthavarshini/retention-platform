@@ -1,7 +1,16 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const db = new Database(path.join(__dirname, '../../data/retention.db'));
+const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
+  : path.join(__dirname, '../../data');
+
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const db = new Database(path.join(dataDir, 'retention.db'));
 
 db.pragma('journal_mode = WAL');
 
@@ -82,6 +91,23 @@ db.exec(`
     score REAL NOT NULL,
     score_date TEXT NOT NULL,
     factors TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS winback_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id TEXT NOT NULL,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    plan_type TEXT,
+    subscription_value REAL DEFAULT 0,
+    cancellation_reason TEXT,
+    status TEXT DEFAULT 'In Progress',
+    notes TEXT,
+    last_contact_date TEXT,
+    next_followup_date TEXT,
+    outcome TEXT,
+    outreach_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
   );
 `);
 
