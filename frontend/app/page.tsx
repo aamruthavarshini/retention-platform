@@ -74,7 +74,7 @@ export default function Dashboard() {
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={({ plan_type, count }) => `${plan_type}: ${count}`}
+                label={({ name, value }) => `${name}: ${value}`}
               >
                 {stats.planBreakdown.map((_: any, i: number) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
